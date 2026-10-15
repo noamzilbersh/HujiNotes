@@ -13,10 +13,12 @@
   const $modal = document.getElementById("modal-root");
   const $toasts = document.getElementById("toasts");
 
+  const EMAIL_DOMAIN = (C.ALLOWED_EMAIL_DOMAINS || [])[0] || "gmail.com";
+
   // Ready-made accounts so you can try both sides of a deal quickly.
   const DEMO_ACCOUNTS = [
-    { name: "Alex Student", email: "alex.student.demo@gmail.com" },
-    { name: "Sam Seller", email: "sam.seller.demo@gmail.com" },
+    { name: "Alex Student", email: "alex.student.demo@" + EMAIL_DOMAIN },
+    { name: "Sam Seller", email: "sam.seller.demo@" + EMAIL_DOMAIN },
   ];
 
   const ICONS = {
@@ -276,8 +278,7 @@
   function viewLogin() {
     const google = A.googleEnabled();
     const demo = A.demoEnabled();
-    const domains = C.ALLOWED_EMAIL_DOMAINS || [];
-    const placeholder = "you@" + (domains[0] || "gmail.com");
+    const placeholder = "you@" + EMAIL_DOMAIN;
     return {
       title: "Sign in",
       html: `
@@ -287,7 +288,7 @@
           <h1>Finished a class? Pass your notes on.</h1>
           <p class="lead">Sell or give away your notes and mock test notebooks, or find them for the class you're taking now.</p>
           <ol class="how">
-            <li><strong>Sign in</strong> with your Gmail.</li>
+            <li><strong>Sign in</strong> with your university email (@${esc(EMAIL_DOMAIN)}).</li>
             <li><strong>Sell:</strong> pick the course, write a short description, set a price.</li>
             <li><strong>Buy:</strong> pick the course, then notes or mock test notebooks. Pay the asking price or make a counteroffer.</li>
             <li><strong>Agree on a price</strong> and you both get each other's email. You pay each other directly, not through the site.</li>
@@ -301,10 +302,10 @@
           <form data-form="demo-login" class="stack" novalidate>
             <label class="field"><span class="label">Your name</span>
               <input name="name" maxlength="40" autocomplete="name" placeholder="e.g. Noa Cohen" required></label>
-            <label class="field"><span class="label">Gmail address</span>
+            <label class="field"><span class="label">University email</span>
               <input name="email" type="email" autocomplete="email" placeholder="${esc(placeholder)}" required></label>
             <p class="form-error" role="alert" hidden></p>
-            <button class="btn primary block" type="submit">${ICONS.mail} Sign in with Gmail</button>
+            <button class="btn primary block" type="submit">${ICONS.mail} Sign in</button>
           </form>
           <div class="demo-accounts">
             <p class="muted small">Or try a ready-made account:</p>

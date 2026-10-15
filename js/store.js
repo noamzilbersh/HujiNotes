@@ -17,7 +17,7 @@
   const C = window.APP_CONFIG;
   const U = window.U;
 
-  const DB_KEY = "noteswap.db.v1";
+  const DB_KEY = "noteswap.db.v2";
   const BOT_DELAY_MS = 2500;
   const DAY = 24 * 60 * 60 * 1000;
 
@@ -226,13 +226,14 @@
 
   // ---------- seed data ----------
 
+  const DEMO_DOMAIN = (C.ALLOWED_EMAIL_DOMAINS || [])[0] || "gmail.com";
   const DEMO_SELLERS = [
-    { email: "dana.levi.demo@gmail.com", name: "Dana Levi" },
-    { email: "omer.katz.demo@gmail.com", name: "Omer Katz" },
-    { email: "maya.rosen.demo@gmail.com", name: "Maya Rosen" },
-    { email: "jordan.lee.demo@gmail.com", name: "Jordan Lee" },
-    { email: "priya.shah.demo@gmail.com", name: "Priya Shah" },
-    { email: "ethan.brooks.demo@gmail.com", name: "Ethan Brooks" },
+    { email: "dana.levi.demo@" + DEMO_DOMAIN, name: "Dana Levi" },
+    { email: "omer.katz.demo@" + DEMO_DOMAIN, name: "Omer Katz" },
+    { email: "maya.rosen.demo@" + DEMO_DOMAIN, name: "Maya Rosen" },
+    { email: "jordan.lee.demo@" + DEMO_DOMAIN, name: "Jordan Lee" },
+    { email: "priya.shah.demo@" + DEMO_DOMAIN, name: "Priya Shah" },
+    { email: "ethan.brooks.demo@" + DEMO_DOMAIN, name: "Ethan Brooks" },
   ];
 
   // [seller index, course id, type, description, price, days ago]

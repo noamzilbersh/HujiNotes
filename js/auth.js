@@ -1,7 +1,7 @@
 /*
  * Sign-in. Two options:
  *  - Google Sign-In (real Google account picker) when GOOGLE_CLIENT_ID is set.
- *  - Demo sign-in: type a Gmail address, no password.
+ *  - Demo sign-in: type your university email, no password.
  *
  * Note: without a server, the Google token is only decoded in the browser and
  * never verified, which is fine for a demo but not for production.

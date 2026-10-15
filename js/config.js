@@ -14,14 +14,14 @@ window.APP_CONFIG = {
   // Leave empty to use the demo sign-in only.
   GOOGLE_CLIENT_ID: "",
 
-  // Lets people sign in by typing a Gmail address (no password).
+  // Lets people sign in by typing their university email (no password).
   // Handy for a demo; set to false once Google sign-in is configured.
   ENABLE_DEMO_LOGIN: true,
 
-  // Only these email domains may sign in. Add your university's domain if
-  // students use Google accounts like name@student.myuni.edu.
+  // Only these email domains may sign in (HUJI student accounts are Google
+  // accounts, so Google Sign-In works with them too).
   // An empty list allows any domain.
-  ALLOWED_EMAIL_DOMAINS: ["gmail.com"],
+  ALLOWED_EMAIL_DOMAINS: ["mail.huji.ac.il"],
 
   // Highest price a seller can ask.
   MAX_PRICE: 1000,

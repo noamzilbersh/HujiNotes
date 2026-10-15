@@ -3,7 +3,7 @@
 A demo website where university students can **sell, give away and buy** notes
 and mock test notebooks from classes they've finished.
 
-- **Sign in with Gmail.** Real Google Sign-In when configured, plus a demo sign-in.
+- **Sign in with your HUJI email** (`@mail.huji.ac.il`). Real Google Sign-In when configured, plus a demo sign-in.
 - **Sell:** pick the course from a list, choose *Notes* or *Mock test notebook*,
   write a short description and set a price (or give it away for free).
 - **Buy:** *What course?* → *I want notes* or *Mock test notebooks* → see every option.
@@ -58,7 +58,7 @@ Everything lives in **`js/config.js`**:
 | `SITE_NAME`, `UNIVERSITY_NAME` | Names shown on the site |
 | `CURRENCY` | Price symbol, e.g. `"$"`, `"₪"`, `"€"` |
 | `COURSES` | The course list sellers pick from. Replace with your university's courses |
-| `ALLOWED_EMAIL_DOMAINS` | Which emails may sign in (default `gmail.com`; add your university domain if needed) |
+| `ALLOWED_EMAIL_DOMAINS` | Which emails may sign in (currently `mail.huji.ac.il`) |
 | `GOOGLE_CLIENT_ID` | Turns on real "Sign in with Google" (see below) |
 | `ENABLE_DEMO_LOGIN` | Allow sign-in by typing an email (set `false` once Google sign-in works) |
 
