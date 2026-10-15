@@ -1,8 +1,8 @@
 # 📚 HujiNotes: a student marketplace for class notes
 
-### 👉 [Open the website](https://noamzilbersh.github.io/my_repo/)
+### 👉 [Open the website](https://noamzilbersh.github.io/HujiNotes/)
 
-**Live site:** https://noamzilbersh.github.io/my_repo/
+**Live site:** https://noamzilbersh.github.io/HujiNotes/
 
 A demo website where Hebrew University students can **sell, give away and buy**
 notes and mock test notebooks from classes they've finished.
@@ -48,15 +48,15 @@ python3 -m http.server 8000
 
 ## Put it on GitHub Pages
 
-1. Create a repository on GitHub (e.g. `noteswap`) and push this folder:
+1. Create a repository on GitHub (e.g. `HujiNotes`) and push this folder:
    ```bash
-   git remote add origin https://github.com/<your-username>/noteswap.git
+   git remote add origin https://github.com/<your-username>/HujiNotes.git
    git branch -M main
    git push -u origin main
    ```
 2. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a
    branch**, choose `main` and `/ (root)`, then **Save**.
-3. After a minute the site is live at `https://<your-username>.github.io/noteswap/`.
+3. After a minute the site is live at `https://<your-username>.github.io/HujiNotes/`.
 
 ## Customize it
 
