@@ -32,6 +32,9 @@
   let buySort = "newest";
   let knownNotifs = null; // { owner, ids:Set } notifications this tab has already shown
   let modal = null; // { onSubmit, returnFocus }
+  let pendingHighlight = null; // CSS selector to point at after the next page renders
+  let helpLog = []; // the help chat so far: { from: "bot"|"user", id?, text? }
+  let photoBusy = 0; // photos still being resized
 
   // ---------- routing ----------
 
@@ -50,12 +53,13 @@
     "my-listings": viewMyListings,
     "my-offers": viewMyOffers,
     notifications: viewNotifications,
+    help: viewHelp,
   };
 
   function render({ keepScroll = false } = {}) {
     me = A.current();
     const route = parseHash();
-    if (!me && route.name !== "login") {
+    if (!me && route.name !== "login" && route.name !== "help") {
       pendingRoute = location.hash || "#/";
       location.replace("#/login");
       return;
@@ -72,6 +76,8 @@
     renderHeader(route.name);
     if (out.mount) out.mount();
     window.scrollTo(0, keepScroll ? y : 0);
+    if (pendingHighlight) highlight(pendingHighlight);
+    pendingHighlight = null;
     checkNotifications();
   }
 
@@ -100,7 +106,7 @@
     if (!me) {
       $nav.hidden = true;
       $nav.innerHTML = "";
-      $user.innerHTML = "";
+      $user.innerHTML = `<a class="btn ghost sm" href="#/help" ${active === "help" ? 'aria-current="page"' : ""}>❓ Help</a>`;
       return;
     }
     const unread = S.unreadCount(me.email);
@@ -113,6 +119,7 @@
       ["sell", "#/sell", "Sell", 0],
       ["my-listings", "#/my-listings", "My listings", sellerTurn],
       ["my-offers", "#/my-offers", "My offers", buyerTurn],
+      ["help", "#/help", "Help", 0],
     ];
     $nav.hidden = false;
     $nav.innerHTML = links.map(([name, href, label, dot]) =>
@@ -180,12 +187,76 @@
   }
 
   function listingSummary(l) {
-    return `<div class="summary">
-      <div class="summary-top">${typeTag(l.type)} ${priceTag(l.price)}</div>
-      <p class="summary-course">${esc(U.courseLabel(l.courseId))}</p>
-      <p class="summary-desc">${esc(l.description)}</p>
-      <p class="meta">Seller: ${esc(l.sellerName)}</p>
+    return `<div class="summary ${l.photo ? "has-photo" : ""}">
+      ${l.photo ? `<img class="summary-photo" src="${esc(l.photo)}" alt="">` : ""}
+      <div>
+        <div class="summary-top">${typeTag(l.type)} ${priceTag(l.price)}</div>
+        <p class="summary-course">${esc(U.courseLabel(l.courseId))}</p>
+        <p class="summary-desc">${esc(l.description)}</p>
+        <p class="meta">Seller: ${esc(l.sellerName)}</p>
+        ${locationLine(l)}
+      </div>
     </div>`;
+  }
+
+  function locationLine(l) {
+    const where = U.locationText(l);
+    return where ? `<p class="meta location">📍 ${esc(where)}</p>` : "";
+  }
+
+  // Clickable photo that opens full size.
+  function listingPhoto(l, cls) {
+    if (!l.photo) return "";
+    return `<button class="photo-btn ${cls}" type="button" data-action="view-photo" data-id="${esc(l.id)}" aria-label="View photo full size">
+      <img src="${esc(l.photo)}" alt="Photo of the ${esc(U.typeInfo(l.type).label.toLowerCase())}" loading="lazy"></button>`;
+  }
+
+  // Photo picker used on the Sell page and in the Edit dialog. The resized
+  // image is kept in the hidden "photo" input as a data URL.
+  function photoField(label, current, id) {
+    return `<div class="field" id="${id}">
+      <span class="label">${label}</span>
+      <input type="hidden" name="photo" value="${esc(current || "")}">
+      <div class="photo-pick">
+        <img class="photo-preview" alt="Preview of your photo" ${current ? `src="${esc(current)}"` : "hidden"}>
+        <div class="btn-row">
+          <label class="btn secondary sm file-btn">📷 <span class="file-label">${current ? "Change photo" : "Add a photo"}</span>
+            <input type="file" accept="image/*" data-photo-input></label>
+          <button class="btn ghost sm" type="button" data-action="remove-photo" ${current ? "" : "hidden"}>Remove</button>
+        </div>
+      </div>
+      <div class="hint"><span>Optional. A photo of the cover or a sample page helps buyers.</span></div>
+    </div>`;
+  }
+
+  function locationFields(label, l, id) {
+    const current = (l && l.location) || "";
+    return `<div class="field" id="${id}">
+      <label class="label" for="${id}-select">${label}</label>
+      <select id="${id}-select" name="location" data-location-select>
+        <option value="">Decide later with the buyer</option>
+        ${(C.LOCATIONS || []).map((loc) => `<option value="${esc(loc.id)}" ${loc.id === current ? "selected" : ""}>${esc(loc.label)}</option>`).join("")}
+      </select>
+      <input name="locationDetails" maxlength="80" value="${esc((l && l.locationDetails) || "")}" aria-label="Exact meeting spot"
+        placeholder="${current === "other" ? "Where? e.g. Café Hillel, Emek Refaim" : "Exact spot (optional), e.g. Main library entrance"}">
+    </div>`;
+  }
+
+  function watermark(cls = "") {
+    return C.UNIVERSITY_LOGO ? `<img class="watermark ${cls}" src="${esc(C.UNIVERSITY_LOGO)}" alt="" aria-hidden="true">` : "";
+  }
+
+  // Scrolls to an element and makes it pulse so people see what to press.
+  function highlight(selector) {
+    let el = null;
+    for (const sel of selector.split(",")) {
+      el = document.querySelector(sel.trim());
+      if (el) break;
+    }
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("guide-pulse");
+    setTimeout(() => el.classList.remove("guide-pulse"), 4200);
   }
 
   function contactBox(name, email, listing, price) {
@@ -194,6 +265,7 @@
     return `<div class="contact">
       <p class="contact-title">🎉 Deal agreed: ${esc(what)}</p>
       <p>Get in touch with ${esc(name)} to plan payment and pickup:</p>
+      ${U.locationText(listing) ? `<p>📍 Meeting place: <strong>${esc(U.locationText(listing))}</strong></p>` : ""}
       <div class="btn-row">
         <a class="btn primary sm" href="mailto:${esc(email)}?subject=${encodeURIComponent(subject)}">${ICONS.mail} ${esc(email)}</a>
         <button class="btn ghost sm" type="button" data-action="copy" data-text="${esc(email)}">Copy email</button>
@@ -282,6 +354,7 @@
     return {
       title: "Sign in",
       html: `
+      ${watermark("on-login")}
       <section class="hero">
         <div class="hero-copy">
           <p class="eyebrow">${esc(C.UNIVERSITY_NAME)} · student marketplace</p>
@@ -314,6 +387,7 @@
           </div>
           <p class="note">Demo mode: no password is needed and everything stays in this browser.
             Tip: sign in as a different person in a second tab to see offers and notifications go back and forth.</p>` : ""}
+          <p class="small center-text">Not sure how it works? <a href="#/help">Ask the help bot</a></p>
         </div>
       </section>`,
       mount() {
@@ -340,6 +414,7 @@
       title: "Home",
       live: true,
       html: `
+      ${watermark()}
       <section class="page-head">
         <h1>Hi ${esc(U.firstName(me.name))}, what would you like to do?</h1>
       </section>
@@ -411,14 +486,16 @@
             placeholder="e.g. Typed notes for the whole semester with solved examples. Printed and bound."></textarea>
           <div class="hint"><span>What's included, condition, printed or digital.</span><span data-counter-for="sell-desc">0/300</span></div>
         </div>
+        ${photoField('<span class="step">4</span> Photo <span class="muted">(optional)</span>', "", "sell-photo")}
         <div class="field">
-          <label class="label" for="sell-price"><span class="step">4</span> Price</label>
+          <label class="label" for="sell-price"><span class="step">5</span> Price</label>
           <div class="price-row">
             <div class="price-input"><span>${esc(C.CURRENCY)}</span>
               <input id="sell-price" name="price" type="number" min="0" max="${C.MAX_PRICE}" step="0.5" inputmode="decimal" placeholder="20" required></div>
             <label class="check"><input type="checkbox" name="free" data-toggle-free> Give it away for free</label>
           </div>
         </div>
+        ${locationFields('<span class="step">6</span> Where can you meet?', null, "sell-location")}
         <p class="form-error" role="alert" hidden></p>
         <div class="form-actions"><button class="btn primary lg" type="submit">Post listing</button></div>
       </form>`,
@@ -520,19 +597,23 @@
         </div>
       </section>
       ${listings.length ? `<p class="muted small">${listings.length} option${listings.length === 1 ? "" : "s"}</p>
-        <div class="listing-grid">${listings.map(buyerCard).join("")}</div>`
+        <div class="listing-grid">${listings.map((l) => buyerCard(l, listings.some((x) => x.photo))).join("")}</div>`
         : emptyState(t.icon, `No ${esc(t.plural.toLowerCase())} for ${esc(course.code)} yet`,
           "Check back later, or try the other category.",
           `<div class="btn-row center"><a class="btn secondary" href="#/sell">Have some? Sell yours</a></div>`)}`,
     };
   }
 
-  function buyerCard(l) {
+  // withPlaceholder: other cards in the grid have photos, so keep this one the same shape.
+  function buyerCard(l, withPlaceholder) {
     const own = l.sellerEmail === me.email;
     const offer = own ? null : S.latestOffer(me.email, l.id);
     return `<article class="card listing">
+      ${l.photo ? listingPhoto(l, "listing-photo")
+        : withPlaceholder ? `<div class="listing-photo placeholder" aria-hidden="true">${U.typeInfo(l.type).icon}</div>` : ""}
       <div class="listing-top">${typeTag(l.type)} ${priceTag(l.price)}</div>
       <p class="desc">${esc(l.description)}</p>
+      ${locationLine(l)}
       <p class="meta">${avatar({ name: l.sellerName }, "xs")} ${esc(l.sellerName)} · listed ${U.timeAgo(l.createdAt)}</p>
       <div class="listing-actions">${own
         ? '<p class="status-line">This is your listing. <a href="#/my-listings">Manage it</a></p>'
@@ -586,9 +667,15 @@
         <div>${typeTag(l.type)} <span class="pill ${l.status === "active" ? "pill-ok" : "pill-off"}">${l.status === "active" ? "Active" : "Sold"}</span></div>
         ${priceTag(l.price)}
       </div>
-      <h2 class="card-title">${esc(U.courseLabel(l.courseId))}</h2>
-      <p class="desc">${esc(l.description)}</p>
-      <p class="meta">Listed ${U.timeAgo(l.createdAt)}</p>
+      <div class="seller-main">
+        <div>
+          <h2 class="card-title">${esc(U.courseLabel(l.courseId))}</h2>
+          <p class="desc">${esc(l.description)}</p>
+          ${locationLine(l)}
+          <p class="meta">Listed ${U.timeAgo(l.createdAt)}</p>
+        </div>
+        ${listingPhoto(l, "thumb")}
+      </div>
       ${l.status === "active" ? `<div class="btn-row">
         <button class="btn ghost sm" data-action="edit-listing" data-id="${esc(l.id)}">Edit</button>
         <button class="btn ghost sm danger" data-action="remove-listing" data-id="${esc(l.id)}">Remove</button>
@@ -624,8 +711,14 @@
             const l = S.getListing(o.listingId);
             return `<article class="card">
               ${l ? `<div class="listing-top">${typeTag(l.type)} <span class="muted small">Asking ${U.money(l.price)}</span></div>
-                <h3 class="card-title">${esc(U.courseLabel(l.courseId))}</h3>
-                <p class="desc">${esc(l.description)}</p>` : ""}
+                <div class="seller-main">
+                  <div>
+                    <h3 class="card-title">${esc(U.courseLabel(l.courseId))}</h3>
+                    <p class="desc">${esc(l.description)}</p>
+                    ${locationLine(l)}
+                  </div>
+                  ${listingPhoto(l, "thumb")}
+                </div>` : ""}
               ${offerBlock(o, "buyer", l)}
             </article>`;
           }).join("")}</div>
@@ -665,6 +758,72 @@
         </li>`).join("")}</ul>`
         : emptyState("🔔", "No notifications yet", "You'll be notified here about counteroffers and agreed deals.")}`,
     };
+  }
+
+  // ---------- help chatbot ----------
+
+  function viewHelp() {
+    const flow = window.HELP_FLOW;
+    if (!helpLog.length) helpLog.push({ from: "bot", id: "start" });
+    const last = helpLog.length - 1;
+    return {
+      title: "Help",
+      html: `
+      <section class="page-head">
+        <h1>Help</h1>
+        <p class="lead">Answer a couple of questions and I'll show you exactly where to go and what to press.</p>
+      </section>
+      <div class="card chat">
+        <div class="chat-log" id="chat-log" aria-live="polite">
+          ${helpLog.map((m, i) => m.from === "user"
+            ? `<div class="msg user"><p class="bubble">${esc(m.text)}</p></div>`
+            : botMessage(flow[m.id] || flow.notUnderstood, i === last)).join("")}
+        </div>
+        <form class="chat-input" data-form="help-ask">
+          <input maxlength="200" placeholder="Or type a question, e.g. “how do I add a photo?”" aria-label="Type your question">
+          <button class="btn primary sm" type="submit">Send</button>
+        </form>
+        <div class="chat-foot"><button class="link-btn" type="button" data-action="help-restart">↺ Start over</button></div>
+      </div>`,
+      mount() {
+        const log = document.getElementById("chat-log");
+        log.scrollTop = log.scrollHeight;
+        if (helpLog.length > 1 && helpLog[helpLog.length - 2].typed) document.querySelector(".chat-input input").focus();
+      },
+    };
+  }
+
+  function botMessage(node, isLatest) {
+    const options = node.options || window.HELP_FLOW.start.options;
+    return `<div class="msg bot ${isLatest ? "latest" : ""}">
+      <span class="bot-avatar" aria-hidden="true">🤖</span>
+      <div class="bubble">
+        <p>${node.text}</p>
+        ${node.steps ? `<ol class="help-steps">${node.steps.map((step) => `<li>${step}</li>`).join("")}</ol>` : ""}
+        ${node.go ? `<button class="btn primary sm" type="button" data-action="help-go" data-link="${esc(node.go.link)}"
+          data-highlight="${esc(node.go.highlight || "")}">👉 ${esc(node.go.label)}</button>` : ""}
+        ${isLatest ? `<div class="chat-options">${options.map(([label, id]) =>
+          `<button class="chip-btn" type="button" data-action="help-pick" data-node="${esc(id)}">${esc(label)}</button>`).join("")}</div>` : ""}
+      </div>
+    </div>`;
+  }
+
+  function helpSay(nodeId, userText, typed) {
+    helpLog.push({ from: "user", text: userText, typed: !!typed });
+    helpLog.push({ from: "bot", id: window.HELP_FLOW[nodeId] ? nodeId : "notUnderstood" });
+    render({ keepScroll: true });
+  }
+
+  // Picks the help topic whose keywords best match what was typed.
+  function matchHelp(text) {
+    const q = text.toLowerCase();
+    let best = "notUnderstood";
+    let bestScore = 0;
+    for (const [id, node] of Object.entries(window.HELP_FLOW)) {
+      const score = (node.keywords || []).reduce((sum, k) => sum + (q.includes(k) ? k.length : 0), 0);
+      if (score > bestScore) { best = id; bestScore = score; }
+    }
+    return best;
   }
 
   function viewNotFound() {
@@ -862,9 +1021,15 @@
             <textarea name="description" rows="3" maxlength="300" required>${esc(l.description)}</textarea></label>
           <label class="field"><span class="label">Price (0 = free)</span>
             <div class="price-input"><span>${esc(C.CURRENCY)}</span>
-              <input name="price" type="number" min="0" max="${C.MAX_PRICE}" step="0.5" value="${esc(l.price)}" required></div></label>`,
+              <input name="price" type="number" min="0" max="${C.MAX_PRICE}" step="0.5" value="${esc(l.price)}" required></div></label>
+          ${photoField("Photo", l.photo, "edit-photo")}
+          ${locationFields("Where can you meet?", l, "edit-location")}`,
         submitLabel: "Save changes",
-        onSubmit: (data) => { S.updateListing(me, l.id, { description: data.get("description"), price: data.get("price") }); return "Listing updated."; },
+        onSubmit: (data) => {
+          if (photoBusy) throw new Error("Your photo is still loading. Try again in a moment.");
+          S.updateListing(me, l.id, listingFields(data));
+          return "Listing updated.";
+        },
       });
     },
 
@@ -878,6 +1043,43 @@
         danger: true,
         onSubmit: () => { S.removeListing(me, l.id); return "Listing removed."; },
       });
+    },
+
+    "remove-photo"(el) {
+      const field = el.closest(".field");
+      setPhoto(field, "");
+      field.querySelector("[data-photo-input]").value = "";
+    },
+
+    "view-photo"(el) {
+      const l = S.getListing(el.dataset.id);
+      if (!l || !l.photo) return;
+      modal = { onSubmit: null, returnFocus: el };
+      $modal.innerHTML = `
+        <div class="modal-backdrop lightbox" data-action="close-modal-backdrop" role="dialog" aria-modal="true" aria-label="Photo">
+          <figure>
+            <img src="${esc(l.photo)}" alt="Photo of the ${esc(U.typeInfo(l.type).label.toLowerCase())}">
+            <figcaption>${esc(U.courseLabel(l.courseId))}</figcaption>
+          </figure>
+          <button class="icon-btn lightbox-x" type="button" data-action="close-modal" aria-label="Close">×</button>
+        </div>`;
+      document.body.classList.add("modal-open");
+      $modal.querySelector(".lightbox-x").focus();
+    },
+
+    "help-pick"(el) {
+      helpSay(el.dataset.node, el.textContent.trim());
+    },
+
+    "help-restart"() {
+      helpLog = [];
+      render();
+    },
+
+    "help-go"(el) {
+      pendingHighlight = el.dataset.highlight || null;
+      if (location.hash === el.dataset.link) render();
+      else location.hash = el.dataset.link;
     },
 
     "fill-amount"(el) {
@@ -941,15 +1143,10 @@
     },
 
     sell(form) {
+      if (photoBusy) { showFormError(form, "Your photo is still loading. Try again in a moment."); return; }
       const data = new FormData(form);
-      const free = data.get("free") === "on";
       try {
-        S.createListing(me, {
-          courseId: data.get("courseId"),
-          type: data.get("type"),
-          description: data.get("description"),
-          price: free ? 0 : data.get("price"),
-        });
+        S.createListing(me, { courseId: data.get("courseId"), type: data.get("type"), ...listingFields(data) });
       } catch (err) {
         showFormError(form, err.message);
         return;
@@ -958,8 +1155,15 @@
       location.hash = "#/my-listings";
     },
 
+    "help-ask"(form) {
+      const input = form.querySelector("input");
+      const text = input.value.trim();
+      if (!text) return;
+      helpSay(matchHelp(text), text, true);
+    },
+
     modal(form) {
-      if (!modal) return;
+      if (!modal || !modal.onSubmit) return;
       let message;
       try {
         message = modal.onSubmit(new FormData(form));
@@ -1007,6 +1211,20 @@
       price.value = t.checked ? "0" : "";
       if (!t.checked) price.focus();
     }
+    if (t.matches("[data-photo-input]") && t.files && t.files[0]) {
+      const field = t.closest(".field");
+      photoBusy++;
+      field.querySelector(".file-label").textContent = "Loading…";
+      resizePhoto(t.files[0])
+        .then((dataUrl) => setPhoto(field, dataUrl))
+        .catch((err) => { setPhoto(field, field.querySelector('input[name="photo"]').value); toast(err.message, "error"); })
+        .finally(() => { photoBusy--; t.value = ""; });
+    }
+    if (t.matches("[data-location-select]")) {
+      const details = t.form.querySelector('input[name="locationDetails"]');
+      details.placeholder = t.value === "other" ? "Where? e.g. Café Hillel, Emek Refaim" : "Exact spot (optional), e.g. Main library entrance";
+      if (t.value === "other") details.focus();
+    }
     if (t.matches("[data-sort]")) {
       buySort = t.value;
       render({ keepScroll: true });
@@ -1016,6 +1234,53 @@
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && modal) closeModal();
   });
+
+  function listingFields(data) {
+    return {
+      description: data.get("description"),
+      price: data.get("free") === "on" ? 0 : data.get("price"),
+      photo: data.get("photo"),
+      location: data.get("location"),
+      locationDetails: data.get("locationDetails"),
+    };
+  }
+
+  function setPhoto(field, dataUrl) {
+    field.querySelector('input[name="photo"]').value = dataUrl;
+    const img = field.querySelector(".photo-preview");
+    img.hidden = !dataUrl;
+    if (dataUrl) img.src = dataUrl; else img.removeAttribute("src");
+    field.querySelector(".file-label").textContent = dataUrl ? "Change photo" : "Add a photo";
+    field.querySelector('[data-action="remove-photo"]').hidden = !dataUrl;
+  }
+
+  // Shrinks a photo to at most 1000px and re-encodes it as JPEG, so it fits
+  // in the browser's limited storage.
+  function resizePhoto(file) {
+    return new Promise((resolve, reject) => {
+      if (!/^image\//.test(file.type)) { reject(new Error("Please choose an image file (JPG or PNG).")); return; }
+      if (file.size > 20 * 1024 * 1024) { reject(new Error("That photo is too big. Please choose one under 20 MB.")); return; }
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff"; // transparent PNGs get a white background
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Couldn't open that image. Please try a JPG or PNG."));
+      };
+      img.src = url;
+    });
+  }
 
   function filterCourses(query) {
     const q = query.trim().toLowerCase();
@@ -1049,6 +1314,9 @@
   }, 1000);
 
   document.getElementById("site-name").textContent = C.SITE_NAME;
+  const logo = document.getElementById("uni-logo");
+  if (C.UNIVERSITY_LOGO) logo.src = C.UNIVERSITY_LOGO;
+  else { logo.remove(); document.querySelector(".brand-divider").remove(); }
   document.getElementById("footer-university").textContent = C.UNIVERSITY_NAME;
   render();
 })();

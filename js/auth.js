@@ -11,7 +11,7 @@
 (function () {
   "use strict";
   const C = window.APP_CONFIG;
-  const SESSION_KEY = "noteswap.session.v1";
+  const SESSION_KEY = "hujinotes.session.v1";
   let memorySession = null;
 
   function readSession() {

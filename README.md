@@ -1,15 +1,17 @@
-# 📚 NoteSwap: a student marketplace for class notes
+# 📚 HujiNotes: a student marketplace for class notes
 
 ### 👉 [Open the website](https://noamzilbersh.github.io/my_repo/)
 
 **Live site:** https://noamzilbersh.github.io/my_repo/
 
-A demo website where university students can **sell, give away and buy** notes
-and mock test notebooks from classes they've finished.
+A demo website where Hebrew University students can **sell, give away and buy**
+notes and mock test notebooks from classes they've finished.
+*An unofficial student project, not affiliated with the university.*
 
 - **Sign in with your HUJI email** (`@mail.huji.ac.il`). Real Google Sign-In when configured, plus a demo sign-in.
 - **Sell:** pick the course from a list, choose *Notes* or *Mock test notebook*,
-  write a short description and set a price (or give it away for free).
+  write a short description, **add a photo** (optional), set a price (or give it
+  away for free) and choose **where to meet** (Mount Scopus, Givat Ram, …).
 - **Buy:** *What course?* → *I want notes* or *Mock test notebooks* → see every option.
 - **Counteroffers:** if the price is too high, make an offer. The seller gets a
   notification and can **accept, decline or counter**, and the negotiation can go
@@ -17,6 +19,9 @@ and mock test notebooks from classes they've finished.
 - **Deal agreed:** the seller gets a notification with the buyer's email, and the
   buyer gets the seller's, so they can plan payment and pickup. **No payment
   happens on the site.**
+- **Help bot:** the Help page has a chatbot with built-in questions. It asks what
+  you need, gives step-by-step instructions, and its "Take me there" button
+  opens the right page and highlights exactly what to press.
 
 It's a static site (HTML, CSS and JavaScript with no server and no build step),
 so it runs on **GitHub Pages** for free.
@@ -60,6 +65,8 @@ Everything lives in **`js/config.js`**:
 | Setting | What it does |
 |---|---|
 | `SITE_NAME`, `UNIVERSITY_NAME` | Names shown on the site |
+| `UNIVERSITY_LOGO` | Logo next to the site name (set `""` to hide) |
+| `LOCATIONS` | Meeting places sellers can choose from |
 | `CURRENCY` | Price symbol, e.g. `"$"`, `"₪"`, `"€"` |
 | `COURSES` | The course list sellers pick from. Replace with your university's courses |
 | `ALLOWED_EMAIL_DOMAINS` | Which emails may sign in (currently `mail.huji.ac.il`) |
@@ -96,5 +103,13 @@ js/config.js      settings & course list  ← edit this
 js/util.js        formatting helpers
 js/store.js       data: listings, offers, notifications (localStorage)
 js/auth.js        Google / demo sign-in
+js/help.js        the help chatbot's questions and answers
+assets/           Hebrew University logo
 js/app.js         pages, routing and interactions
 ```
+
+## Credits
+
+The Hebrew University logo (`assets/huji-logo.svg`) is from
+[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Hebrew_University_Logo.svg),
+where it is marked as public domain.

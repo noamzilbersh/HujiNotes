@@ -31,6 +31,13 @@
       return C.ITEM_TYPES[type] || { label: type, plural: type, icon: "📄", want: type };
     },
 
+    // "Mount Scopus campus · Main library entrance", or "" if not set.
+    locationText(listing) {
+      const loc = (C.LOCATIONS || []).find((l) => l.id === listing.location);
+      const place = loc && loc.id !== "other" ? loc.label : "";
+      return [place, listing.locationDetails].filter(Boolean).join(" · ");
+    },
+
     firstName(name) {
       return String(name || "").trim().split(/\s+/)[0] || "there";
     },

@@ -3,8 +3,12 @@
  * to your university.
  */
 window.APP_CONFIG = {
-  SITE_NAME: "NoteSwap",
-  UNIVERSITY_NAME: "My University",
+  SITE_NAME: "HujiNotes",
+  UNIVERSITY_NAME: "Hebrew University",
+
+  // University logo shown next to the site name (public-domain file from
+  // Wikimedia Commons). Set to "" to hide it.
+  UNIVERSITY_LOGO: "assets/huji-logo.svg",
 
   // Shown in front of prices, e.g. "$", "₪", "€".
   CURRENCY: "$",
@@ -22,6 +26,16 @@ window.APP_CONFIG = {
   // accounts, so Google Sign-In works with them too).
   // An empty list allows any domain.
   ALLOWED_EMAIL_DOMAINS: ["mail.huji.ac.il"],
+
+  // Where buyers and sellers can meet. Sellers pick one when listing an item
+  // and can add an exact spot (e.g. "main library entrance").
+  LOCATIONS: [
+    { id: "scopus", label: "Mount Scopus campus" },
+    { id: "givat-ram", label: "Edmond J. Safra campus (Givat Ram)" },
+    { id: "ein-kerem", label: "Ein Kerem campus" },
+    { id: "rehovot", label: "Rehovot campus" },
+    { id: "other", label: "Somewhere else" },
+  ],
 
   // Highest price a seller can ask.
   MAX_PRICE: 1000,

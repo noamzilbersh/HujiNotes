@@ -17,7 +17,7 @@
   const C = window.APP_CONFIG;
   const U = window.U;
 
-  const DB_KEY = "noteswap.db.v2";
+  const DB_KEY = "hujinotes.db.v1";
   const BOT_DELAY_MS = 2500;
   const DAY = 24 * 60 * 60 * 1000;
 
@@ -31,8 +31,17 @@
   }
 
   function writeRaw(value) {
-    try { window.localStorage.setItem(DB_KEY, value); delete memory[DB_KEY]; }
-    catch (e) { memory[DB_KEY] = value; }
+    try {
+      window.localStorage.setItem(DB_KEY, value);
+      delete memory[DB_KEY];
+    } catch (e) {
+      // Photos can fill the browser's ~5 MB storage. Say so instead of
+      // silently keeping the data only until the page is closed.
+      if (e && (e.name === "QuotaExceededError" || e.code === 22)) {
+        throw new Error("Your browser's storage is full. Try a smaller photo, or remove some old listings.");
+      }
+      memory[DB_KEY] = value;
+    }
   }
 
   function now() { return Date.now(); }
@@ -84,6 +93,22 @@
     return Math.round(n * 100) / 100;
   }
 
+  const MAX_PHOTO_CHARS = 1500000; // about 1.1 MB of image data
+
+  function cleanListingFields({ description, price, photo, location, locationDetails }) {
+    const text = String(description || "").trim();
+    if (text.length < 10) fail("Please add a short description (at least 10 characters).");
+    if (text.length > 300) fail("Please keep the description under 300 characters.");
+    const pic = String(photo || "");
+    if (pic && !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(pic)) fail("That photo couldn't be used. Please try another image.");
+    if (pic.length > MAX_PHOTO_CHARS) fail("That photo is too large. Please try a smaller one.");
+    const loc = String(location || "");
+    if (loc && !(C.LOCATIONS || []).some((l) => l.id === loc)) fail("Please pick a meeting place from the list.");
+    const details = String(locationDetails || "").trim().replace(/\s+/g, " ").slice(0, 80);
+    if (loc === "other" && !details) fail("Please write where you'd like to meet.");
+    return { description: text, price: parsePrice(price), photo: pic, location: loc, locationDetails: details };
+  }
+
   function cleanNote(note) {
     return String(note || "").trim().slice(0, 200);
   }
@@ -131,10 +156,12 @@
     }
 
     const price = offer.amount === 0 ? "for free" : `for ${U.money(offer.amount)}`;
+    const where = U.locationText(listing);
+    const meet = where ? ` Meeting place: ${where}.` : "";
     notify(db, offer.sellerEmail, {
       kind: "deal",
       title: `Deal agreed with ${offer.buyerName}`,
-      body: `${offer.buyerName} is getting your ${itemName(listing)} ${price}. Email them to plan payment and pickup.`,
+      body: `${offer.buyerName} is getting your ${itemName(listing)} ${price}. Email them to plan payment and pickup.${meet}`,
       link: "#/my-listings",
       contactEmail: offer.buyerEmail,
       contactName: offer.buyerName,
@@ -143,7 +170,7 @@
     notify(db, offer.buyerEmail, {
       kind: "deal",
       title: `Deal agreed with ${offer.sellerName}`,
-      body: `You're getting the ${itemName(listing)} ${price}. ${offer.sellerName} has your email and may reach out, or you can write first.`,
+      body: `You're getting the ${itemName(listing)} ${price}. ${offer.sellerName} has your email and may reach out, or you can write first.${meet}`,
       link: "#/my-offers",
       contactEmail: offer.sellerEmail,
       contactName: offer.sellerName,
@@ -236,6 +263,11 @@
     { email: "ethan.brooks.demo@" + DEMO_DOMAIN, name: "Ethan Brooks" },
   ];
 
+  const SEED_SPOTS = [
+    ["scopus", "Main library entrance"], ["givat-ram", "Outside the Sprinzak building"], ["scopus", "Forum cafeteria"],
+    ["", ""], ["givat-ram", "Library lobby"], ["ein-kerem", "Main entrance"], ["scopus", "Humanities building lobby"],
+  ];
+
   // [seller index, course id, type, description, price, days ago]
   const SEED_LISTINGS = [
     [0, "cs101", "notes", "Full semester of typed lecture notes with code examples for every topic. Got an A.", 25, 2],
@@ -269,9 +301,11 @@
       if (!U.course(courseId) || !C.ITEM_TYPES[type]) return; // course list was customized
       const seller = DEMO_SELLERS[si];
       const createdAt = t - daysAgo * DAY - (i * 37 % 20) * 60 * 60 * 1000;
+      const [location, locationDetails] = SEED_SPOTS[i % SEED_SPOTS.length];
       db.listings.push({
         id: `seed_${i}`, sellerEmail: seller.email, sellerName: seller.name,
-        courseId, type, description, price, status: "active", createdAt, updatedAt: createdAt,
+        courseId, type, description, price, photo: "", location, locationDetails,
+        status: "active", createdAt, updatedAt: createdAt,
       });
     });
     return db;
@@ -296,36 +330,31 @@
 
     // --- listings ---
 
-    createListing(user, { courseId, type, description, price }) {
+    // fields: { courseId, type, description, price, photo?, location?, locationDetails? }
+    createListing(user, fields) {
+      const { courseId, type } = fields;
       if (!U.course(courseId)) fail("Please pick a course from the list.");
       if (!C.ITEM_TYPES[type]) fail("Please choose what you're selling.");
-      const text = String(description || "").trim();
-      if (text.length < 10) fail("Please add a short description (at least 10 characters).");
-      if (text.length > 300) fail("Please keep the description under 300 characters.");
-      const value = parsePrice(price);
+      const clean = cleanListingFields(fields);
       return tx((db) => {
         const t = now();
         const listing = {
           id: uid("l"), sellerEmail: user.email, sellerName: user.name,
-          courseId, type, description: text, price: value, status: "active", createdAt: t, updatedAt: t,
+          courseId, type, ...clean, status: "active", createdAt: t, updatedAt: t,
         };
         db.listings.push(listing);
         return listing;
       });
     },
 
-    updateListing(user, listingId, { description, price }) {
-      const text = String(description || "").trim();
-      if (text.length < 10) fail("Please add a short description (at least 10 characters).");
-      if (text.length > 300) fail("Please keep the description under 300 characters.");
-      const value = parsePrice(price);
+    // fields: { description, price, photo, location, locationDetails }
+    updateListing(user, listingId, fields) {
+      const clean = cleanListingFields(fields);
       return tx((db) => {
         const l = db.listings.find((x) => x.id === listingId);
         if (!l || l.sellerEmail !== user.email) fail("Listing not found.");
         if (l.status !== "active") fail("Only active listings can be edited.");
-        l.description = text;
-        l.price = value;
-        l.updatedAt = now();
+        Object.assign(l, clean, { updatedAt: now() });
         return l;
       });
     },
