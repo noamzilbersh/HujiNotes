@@ -1,5 +1,9 @@
 # 📚 NoteSwap: a student marketplace for class notes
 
+### 👉 [Open the website](https://noamzilbersh.github.io/my_repo/)
+
+**Live site:** https://noamzilbersh.github.io/my_repo/
+
 A demo website where university students can **sell, give away and buy** notes
 and mock test notebooks from classes they've finished.
 
