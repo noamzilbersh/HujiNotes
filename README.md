@@ -67,7 +67,7 @@ Everything lives in **`js/config.js`**:
 | `SITE_NAME`, `UNIVERSITY_NAME` | Names shown on the site |
 | `UNIVERSITY_LOGO` | Logo next to the site name (set `""` to hide) |
 | `LOCATIONS` | Meeting places sellers can choose from |
-| `CURRENCY` | Price symbol, e.g. `"$"`, `"₪"`, `"€"` |
+| `CURRENCY` | Price symbol (currently `"₪"`) |
 | `COURSES` | The course list sellers pick from. Replace with your university's courses |
 | `ALLOWED_EMAIL_DOMAINS` | Which emails may sign in (currently `mail.huji.ac.il`) |
 | `GOOGLE_CLIENT_ID` | Turns on real "Sign in with Google" (see below) |

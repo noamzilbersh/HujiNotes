@@ -11,7 +11,7 @@ window.APP_CONFIG = {
   UNIVERSITY_LOGO: "assets/huji-logo.svg",
 
   // Shown in front of prices, e.g. "$", "₪", "€".
-  CURRENCY: "$",
+  CURRENCY: "₪",
 
   // Real "Sign in with Google": paste an OAuth Client ID from
   // https://console.cloud.google.com/apis/credentials (see README.md).
